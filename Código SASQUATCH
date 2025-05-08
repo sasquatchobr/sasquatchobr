@@ -1,0 +1,47 @@
+# Exemplo para robô com motores e sensores de cor
+# Adaptado para EV3 (ev3dev2) ou similar
+from ev3dev2.motor import LargeMotor, OUTPUT_B, OUTPUT_C, MoveTank
+from ev3dev2.sensor import INPUT_1, INPUT_2, INPUT_3
+from ev3dev2.sensor.lego import ColorSensor
+from time import sleep
+
+# Motores
+tank = MoveTank(OUTPUT_B, OUTPUT_C)
+
+# Sensores de cor
+sensor_esquerda = ColorSensor(INPUT_1)
+sensor_centro = ColorSensor(INPUT_2)
+sensor_direita = ColorSensor(INPUT_3)
+
+# Define a cor preta como linha (valor pode variar conforme ambiente)
+LIMIAR_PRETO = 20  # exemplo: refletância menor que isso é considerado "preto"
+
+def ler_sensor(sensor):
+    return sensor.reflected_light_intensity < LIMIAR_PRETO
+
+# Loop principal
+while True:
+    esquerda = ler_sensor(sensor_esquerda)
+    centro = ler_sensor(sensor_centro)
+    direita = ler_sensor(sensor_direita)
+
+    if centro and not esquerda and not direita:
+        # Alinhado com a linha
+        tank.on(30, 30)
+
+    elif esquerda and not centro:
+        # Linha à esquerda -> virar para esquerda
+        tank.on(-10, 30)
+
+    elif direita and not centro:
+        # Linha à direita -> virar para direita
+        tank.on(30, -10)
+
+    elif esquerda and centro and direita:
+        # Cruzamento ou interseção
+        tank.on(30, 30)
+
+    else:
+        # Linha perdida - pode parar ou girar para procurar
+        tank.on(-20, -20)
+        sleep(0.3)
