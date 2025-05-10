@@ -1,0 +1,72 @@
+from ev3dev2.motor import LargeMotor, OUTPUT_B, OUTPUT_C, MoveTank
+from ev3dev2.sensor.lego import ColorSensor
+from ev3dev2.sensor import INPUT_1, INPUT_2, INPUT_3
+from time import sleep
+
+# Motores
+tank = MoveTank(OUTPUT_B, OUTPUT_C)
+
+# Sensores de cor
+sensor_esquerda = ColorSensor(INPUT_1)
+sensor_centro = ColorSensor(INPUT_2)
+sensor_direita = ColorSensor(INPUT_3)
+
+# Define o limiar para detectar a linha preta (ajuste conforme o seu ambiente)
+LINHA_PRETA = 20  # Refletância menor que esse valor é considerada "preto"
+COR_VERDE = 3      # Código da cor verde usando COL-COLOR (verificado no modo 'COL-COLOR')
+
+def ler_sensor(sensor):
+    # Retorna True se o sensor detectar a linha preta (valor abaixo do limiar)
+    return sensor.reflected_light_intensity < LINHA_PRETA
+
+def detectar_cor_verde(sensor):
+    # Detecta se o sensor está vendo a cor verde
+    return sensor.color == COR_VERDE
+
+# Loop principal do seguidor de linha
+while True:
+    # Leitura dos sensores de cor para refletância
+    esquerda = ler_sensor(sensor_esquerda)
+    centro = ler_sensor(sensor_centro)
+    direita = ler_sensor(sensor_direita)
+
+    # Verifica se o sensor central vê a cor verde
+    if detectar_cor_verde(sensor_centro):
+        # Se a cor verde for detectada, virar para o lado onde está a linha
+        if esquerda:
+            # Linha à esquerda, virando à esquerda
+            tank.on(-10, 30)
+        elif direita:
+            # Linha à direita, virando à direita
+            tank.on(30, -10)
+        else:
+            # Caso não tenha linha e detecte verde (por exemplo, se o sensor central vê verde em um ponto de interseção)
+            # Temos que ver se o robo vai virar no verde aleatoriamente ou se vai virar seguindo a linha preta
+            tank.on(30, 30)  # Segue reto após ver o verde, ou pode ser outra ação (ex: parar)
+        
+    elif centro and not esquerda and not direita:
+        # Linha centralizada
+        tank.on(30, 30)  # Segue em linha reta
+
+    elif esquerda and not centro:
+        # Linha à esquerda
+        tank.on(-10, 30)  # Vira à esquerda
+
+    elif direita and not centro:
+        # Linha à direita
+        tank.on(30, -10)  # Vira à direita
+
+    elif esquerda and centro and direita:
+        # Cruzamento ou interseção (se todos os sensores detectarem linha)
+        tank.on(30, 30)  # Segue em linha reta (ou parar, dependendo do comportamento desejado)
+
+    elif not esquerda and not centro and not direita:
+       #corrigir: seguir em frente até que encronte uma linha preta no sensor do centro
+        tank.on(30,30)
+    
+    else:
+        # Linha perdida - o robô vai tentar voltar à linha
+        tank.on(-20, -20)  # Gira um pouco para tentar encontrar a linha
+        sleep(0.3)  # Aguarda um pouco para recuperação
+
+
